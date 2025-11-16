@@ -1,0 +1,30 @@
+version: "3.9"
+
+services:
+  db:
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root_pass
+      MYSQL_DATABASE: disco_db
+      MYSQL_USER: disco_user
+      MYSQL_PASSWORD: disco_pass
+    ports:
+      - "3307:3306"
+    command: --default-authentication-plugin=mysql_native_password
+    volumes:
+      - disco_mysql_data:/var/lib/mysql
+
+  web:
+    build: .
+    depends_on:
+      - db
+    environment:
+      SQLALCHEMY_DATABASE_URI: mysql+pymysql://disco_user:disco_pass@db:3306/disco_db
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app   # para desarrollo (ver código en caliente)
+
+volumes:
+  disco_mysql_data:
