@@ -5,12 +5,12 @@ from sqlalchemy import (
     Enum,
     Numeric,
     DateTime,
-    ForeignKey,
 )
-from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.db.base import Base
 import enum
+import uuid  # 👈 NUEVO
+
 
 class TicketType(str, enum.Enum):
     SIN_CONSUMO = "SIN_CONSUMO"
@@ -19,15 +19,18 @@ class TicketType(str, enum.Enum):
     DINERO_TICKET = "DINERO_TICKET"
     DINERO_TARJETA = "DINERO_TARJETA"
 
+
 class TicketStatus(str, enum.Enum):
     EMITIDA = "EMITIDA"
     USADA = "USADA"
     ANULADA = "ANULADA"
 
+
 class PaymentMethod(str, enum.Enum):
     EFECTIVO = "EFECTIVO"
     TARJETA = "TARJETA"
     MERCADOPAGO = "MERCADOPAGO"
+
 
 class Ticket(Base):
     __tablename__ = "tickets"
@@ -35,11 +38,20 @@ class Ticket(Base):
     id = Column(Integer, primary_key=True, index=True)
     number = Column(Integer, unique=True, index=True, nullable=False)
 
+    # 👇 NUEVO: código único para QR / validación
+    qr_code = Column(
+        String(64),
+        unique=True,
+        index=True,
+        nullable=False,
+        default=lambda: uuid.uuid4().hex,
+    )
+
     ticket_type = Column(Enum(TicketType), nullable=False)
     status = Column(Enum(TicketStatus), nullable=False, default=TicketStatus.EMITIDA)
 
     base_price = Column(Numeric(10, 2), nullable=False, default=0)
-    credit_amount = Column(Numeric(10, 2), nullable=True)       # para DINERO_*
+    credit_amount = Column(Numeric(10, 2), nullable=True)
     remaining_credit = Column(Numeric(10, 2), nullable=True)
 
     payment_method = Column(Enum(PaymentMethod), nullable=False)
