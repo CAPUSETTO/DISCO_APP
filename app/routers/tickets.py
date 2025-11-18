@@ -48,7 +48,7 @@ def create_ticket(ticket_in: TicketCreate, db: Session = Depends(get_db)):
     number = next_ticket_number(db)
     remaining_credit = ticket_in.credit_amount
 
-    # 1) Crear el ticket
+    # 1) Crear el ticket (qr_code se genera solo por default en el modelo)
     db_ticket = Ticket(
         number=number,
         remaining_credit=remaining_credit,
@@ -117,6 +117,34 @@ def cancel_ticket(ticket_id: int, db: Session = Depends(get_db)):
     if ticket.status == TicketStatus.USADA:
         raise HTTPException(status_code=400, detail="Ticket ya usada")
     ticket.status = TicketStatus.ANULADA
+    db.commit()
+    db.refresh(ticket)
+    return ticket
+
+
+# 🚀 NUEVO: Validar ticket por QR / código secreto
+@router.post("/validate-by-code", response_model=TicketRead)
+def validate_ticket_by_code(code: str, db: Session = Depends(get_db)):
+    """
+    Recibe un 'code' (el valor del qr_code del ticket).
+    - Si el ticket existe y está EMITIDA → la marca como USADA.
+    - Si está USADA o ANULADA → lanza error.
+    """
+    ticket = db.query(Ticket).filter(Ticket.qr_code == code).first()
+
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket no encontrado")
+
+    if ticket.status == TicketStatus.USADA:
+        raise HTTPException(status_code=400, detail="Ticket ya fue usada")
+
+    if ticket.status == TicketStatus.ANULADA:
+        raise HTTPException(status_code=400, detail="Ticket está anulada")
+
+    from datetime import datetime
+    ticket.status = TicketStatus.USADA
+    ticket.used_at = datetime.utcnow()
+
     db.commit()
     db.refresh(ticket)
     return ticket
